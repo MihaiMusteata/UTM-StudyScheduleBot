@@ -3,7 +3,7 @@ import requests
 schedule_url = 'https://fcim.utm.md/wp-content/uploads/sites/24/2025/11/orar-master-2025-2026-sem-1-anul-1_final.pdf'
 schedule_filename = 'master-lessons.pdf'
 
-exam_url = 'https://fcim.utm.md/wp-content/uploads/sites/24/2025/10/Sesiuni-de-examinare-Anul-II-sem-3-toamna_2025-2026_P2-1.pdf'
+exam_url = 'https://fcim.utm.md/wp-content/uploads/sites/24/2025/10/Sesiuni-de-examinare-Anul-I-semestru-I_2025_2026_P1.pdf'
 exam_filename = 'master-exams.pdf'
 
 def download_pdf(url, filename, chunk_size=8192, timeout=10):
