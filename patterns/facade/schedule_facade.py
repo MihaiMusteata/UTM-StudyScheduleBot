@@ -1,33 +1,22 @@
-from patterns.adapter.adapters import LessonJSONAdapter, ExamJSONAdapter
-from patterns.builder.builder import NotificationBuilder
-from patterns.template.concrete_downloaders import LessonScheduleDownloader, ExamScheduleDownloader
-
+from patterns.facade.subsystems import LessonSubsystem, TelegramSubsystem, ExamSubsystem
 
 class ScheduleFacade:
-    """
-    Facade pentru proces complet: download, parse, adapt, build notificări
-    """
     def __init__(self):
-        self.lesson_downloader = LessonScheduleDownloader()
-        self.exam_downloader = ExamScheduleDownloader()
-        self.builder = NotificationBuilder()
+        self._lessons = LessonSubsystem()
+        self._exams = ExamSubsystem()
+        self._telegram = TelegramSubsystem()
 
     def update_lessons(self, json_path):
-        self.lesson_downloader.download()
-        adapter = LessonJSONAdapter(json_path)
-        records = adapter.get_records()
-        messages = []
-        for rec in records:
-            self.builder.set_lesson(rec)
-            messages.append(self.builder.get_message())
-        return messages
+        print(self._lessons.run_lesson())
+        records = self._lessons.download_lesson(json_path)
 
     def update_exams(self, json_path):
-        self.exam_downloader.download()
-        adapter = ExamJSONAdapter(json_path)
-        records = adapter.get_records()
-        messages = []
-        for rec in records:
-            self.builder.set_exam(rec)
-            messages.append(self.builder.get_message())
-        return messages
+        print(self._exams.run_exam())
+        records = self._exams.download_exam(json_path)
+
+    def start_bot(self):
+        print(self._telegram.init_bot())
+        self._telegram.start_bot()
+    #
+    # async def send_notification(self, chat_id: int, message: str):
+    #     await self._telegram.send_message(chat_id, message)
