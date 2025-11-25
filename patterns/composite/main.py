@@ -11,7 +11,7 @@ def build_lessons_tree(json_file: str) -> SemesterComposite:
     semester = SemesterComposite("Semestrul 1 - Lectii")
     days_dict = {}
 
-    for lesson in data[1:]:  # sărim antetul
+    for lesson in data[1:]:
         day = lesson.get("col_3", "Necunoscut")
         leaf = LessonLeaf(lesson)
         if day not in days_dict:
@@ -44,8 +44,8 @@ def build_exams_tree(json_file: str) -> SemesterComposite:
 
 
 if __name__ == "__main__":
-    lessons_tree = build_lessons_tree("master-lessons.json")
-    exams_tree = build_exams_tree("master-exams.json")
+    lessons_tree = build_lessons_tree("../factory_method/master-lessons.json")
+    exams_tree = build_exams_tree("../factory_method/master-exams.json")
 
     print("===== ORAR LECȚII =====")
     print(lessons_tree.operation())
