@@ -9,8 +9,14 @@ if __name__ == "__main__":
     lesson_records = lesson_adapter.get_records()
     with open("lessons-schedule.json", "w", encoding="utf-8") as f:
         json.dump(lesson_records, f, ensure_ascii=False, indent=2)
-    print("Lessons (adapted):")
-    print(lesson_records[:3])
+
+    groups = set(record['student_group'] for record in lesson_records)
+    with open("groups.json", "w", encoding="utf-8") as f:
+        json.dump(list(groups), f, ensure_ascii=False, indent=2)
+
+    professors = set(record['professor'] for record in lesson_records)
+    with open("professors.json", "w", encoding="utf-8") as f:
+        json.dump(list(professors), f, ensure_ascii=False, indent=2)
 
     exam_json = ExamJSON("../factory_method/master-exams.json")
     exam_adapter = ExamJSONAdapter(exam_json)

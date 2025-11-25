@@ -1,15 +1,24 @@
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
+
+from components.keyboards.subscribe_keyboards import role_keyboard
 from patterns.command.command import Command
 
 class HelloCommand(Command):
     async def execute(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"Hello {update.effective_user.first_name}")
 
+class StartCommand(Command):
+    async def execute(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        await update.message.reply_text(
+            "Bine ai venit la botul de orar!\n"
+        )
+
 class SubscribeCommand(Command):
     async def execute(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        user = update.effective_user.username or update.effective_user.first_name
-        await update.message.reply_text(f"{user} subscribed to notifications!")
+        await update.message.reply_text(
+            "Te rog să alegi cine ești:",
+            reply_markup=role_keyboard())
 
 class UnsubscribeCommand(Command):
     async def execute(self, update: Update, context: ContextTypes.DEFAULT_TYPE):

@@ -7,6 +7,8 @@ from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import ContextTypes, ApplicationBuilder, CommandHandler
+
+from components.handlers.callback_handlers import callback_handler
 from patterns.adapter.adapters import LessonJSONAdapter, ExamJSONAdapter
 from patterns.command.concrete_commands import HelloCommand, SubscribeCommand, UnsubscribeCommand, NotifyCommand
 from patterns.command.invoker import CommandInvoker
@@ -70,6 +72,7 @@ class TelegramSubsystem:
         self.app = ApplicationBuilder().token(self.token).build()
 
         self.app.add_handler(CommandHandler(["hello", "subscribe", "unsubscribe", "notify"], self.generic_handler))
+        self.app.add_handler(callback_handler)
 
         await self.app.initialize()
         await self.app.start()
