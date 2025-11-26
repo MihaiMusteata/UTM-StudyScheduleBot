@@ -1,13 +1,16 @@
-import asyncio
-
 from patterns.facade.subsystems import LessonSubsystem, TelegramSubsystem, ExamSubsystem, BackgroundServiceSubsystem
+from patterns.observer.concrete_subjects import LessonsSchedule, ExamsSchedule
+
 
 class ScheduleFacade:
-    def __init__(self):
+    def __init__(self, app):
         self._lessons = LessonSubsystem()
         self._exams = ExamSubsystem()
-        self._telegram = TelegramSubsystem()
-        self._monitor = BackgroundServiceSubsystem()
+        self.observe_lessons = LessonsSchedule(app)
+        self.observe_exams = ExamsSchedule()
+        self._telegram = TelegramSubsystem(app, self.observe_lessons, self.observe_exams)
+        self._monitor = BackgroundServiceSubsystem(self.observe_lessons, self.observe_exams)
+
 
     def update_lessons(self, json_path):
         print(self._lessons.run_lesson())

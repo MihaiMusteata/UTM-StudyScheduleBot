@@ -1,53 +1,22 @@
-from patterns.observer.observer import Subject, Observer
-import json
+from asyncio import sleep
 
-class LessonsSchedule(Subject):
-    def __init__(self):
-        self._observers: list[Observer] = []
-        self._data = []
+from patterns.observer.observer import Observer, Subject
 
-    def attach(self, observer: Observer) -> None:
-        self._observers.append(observer)
+class StudentObserver(Observer):
+    def __init__(self, chat_id: int, group_name: str, send_message):
+        self.chat_id = chat_id
+        self.group_name = group_name
+        self.send_message = send_message
 
-    def detach(self, observer: Observer) -> None:
-        self._observers.remove(observer)
-
-    def notify(self) -> None:
-        for observer in self._observers:
-            import asyncio
-            asyncio.create_task(observer.update(self))
-
-    def update_schedule(self, json_file: str):
-        with open(json_file, "r", encoding="utf-8") as f:
-            self._data = json.load(f)
-        self.notify()
-
-    @property
-    def data(self):
-        return self._data
+    async def update(self, subject: Subject, message: str) -> None:
+        await self.send_message(self.chat_id, message)
 
 
-class ExamsSchedule(Subject):
-    def __init__(self):
-        self._observers: list[Observer] = []
-        self._data = []
+class TeacherObserver(Observer):
+    def __init__(self, chat_id: int, teacher_name: str, send_message):
+        self.chat_id = chat_id
+        self.teacher_name = teacher_name
+        self.send_message = send_message
 
-    def attach(self, observer: Observer) -> None:
-        self._observers.append(observer)
-
-    def detach(self, observer: Observer) -> None:
-        self._observers.remove(observer)
-
-    def notify(self) -> None:
-        for observer in self._observers:
-            import asyncio
-            asyncio.create_task(observer.update(self))
-
-    def update_schedule(self, json_file: str):
-        with open(json_file, "r", encoding="utf-8") as f:
-            self._data = json.load(f)
-        self.notify()
-
-    @property
-    def data(self):
-        return self._data
+    async def update(self, subject: Subject, message: str) -> None:
+        await self.send_message(self.chat_id, message)

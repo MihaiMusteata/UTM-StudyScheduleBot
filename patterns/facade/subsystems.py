@@ -2,16 +2,18 @@ import asyncio
 import json
 import os
 from datetime import datetime
+from functools import partial
+
 import requests
 from bs4 import BeautifulSoup
-from dotenv import load_dotenv
 from telegram import Update
-from telegram.ext import ContextTypes, ApplicationBuilder, CommandHandler
+from telegram.ext import ContextTypes, CommandHandler, CallbackQueryHandler
 
-from components.handlers.callback_handlers import callback_handler
+from components.handlers.callback_handlers import handle_callback
 from patterns.adapter.adapters import LessonJSONAdapter, ExamJSONAdapter
 from patterns.command.concrete_commands import HelloCommand, SubscribeCommand, UnsubscribeCommand, NotifyCommand
 from patterns.command.invoker import CommandInvoker
+from patterns.observer.concrete_subjects import LessonsSchedule, ExamsSchedule
 from patterns.template.concrete_downloaders import LessonScheduleDownloader, ExamScheduleDownloader
 
 
@@ -50,11 +52,11 @@ class ExamSubsystem:
 # Subsystem 3 – Telegram Bot
 # --------------------------
 class TelegramSubsystem:
-    def __init__(self):
-        load_dotenv()
-        self.token = os.getenv("BOT_TOKEN")
+    def __init__(self, app, observe_lessons: LessonsSchedule, observe_exams: ExamsSchedule):
         self.invoker = CommandInvoker()
-        self.app = None
+        self.app = app
+        self.observe_lessons = observe_lessons
+        self.observe_exams = observe_exams
 
     async def generic_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await self.invoker.handle(update, context)
@@ -66,14 +68,23 @@ class TelegramSubsystem:
         self.invoker.register("notify", NotifyCommand())
         print("TelegramSubsystem: Initializing Telegram bot...")
 
+    async def send_message(self, chat_id: int, text: str):
+        if not self.app:
+            raise Exception("Telegram bot is not running. Call operation_z first.")
+        await self.app.bot.send_message(chat_id=chat_id, text=text)
+
     async def start_bot(self):
         print("TelegramSubsystem: Starting Telegram bot...")
 
-        self.app = ApplicationBuilder().token(self.token).build()
-
         self.app.add_handler(CommandHandler(["hello", "subscribe", "unsubscribe", "notify"], self.generic_handler))
-        self.app.add_handler(callback_handler)
+        callback_handler_func = partial(
+            handle_callback,
+            observe_lessons=self.observe_lessons,
+            observe_exams=self.observe_exams,
+            send_message=self.send_message
+        )
 
+        self.app.add_handler(CallbackQueryHandler(callback_handler_func))
         await self.app.initialize()
         await self.app.start()
         print("TelegramSubsystem: Bot running with polling...")
@@ -88,21 +99,17 @@ class TelegramSubsystem:
             await self.app.stop()
             await self.app.shutdown()
 
-    async def send_message(self, chat_id: int, text: str):
-        if not self.app:
-            raise Exception("Telegram bot is not running. Call operation_z first.")
-
-        await self.app.bot.send_message(chat_id=chat_id, text=text)
-
 # --------------------------
 # Subsystem 4 – Background service
 # --------------------------
 class BackgroundServiceSubsystem:
-    def __init__(self):
+    def __init__(self, observe_lessons: LessonsSchedule, observe_exams: ExamsSchedule):
         self.URL = "https://fcim.utm.md/procesul-de-studii/orar/#toggle-id-3"
         self.STATE_FILE = "schedule_monitor_state.json"
         self.running = False
         self.monitor_task = None
+        self.observe_lessons = observe_lessons
+        self.observe_exams = observe_exams
 
     async def _check_for_changes(self):
         print(f"[{datetime.now().strftime('%H:%M:%S')}] [Monitor] Performing scheduled check...")
@@ -120,11 +127,11 @@ class BackgroundServiceSubsystem:
 
             if lessons_changed:
                 print(f"[{datetime.now().strftime('%H:%M')}] LESSONS: UPDATED")
-                #TODO Notify
+                self.observe_lessons.update_schedule("Orarul lecțiilor a fost actualizat.")
 
             if exams_changed:
                 print(f"[{datetime.now().strftime('%H:%M')}] EXAMS: UPDATED")
-                #TODO Notify
+                self.observe_exams.update_schedule("Orarul examenelor a fost actualizat.")
 
             if lessons_changed or exams_changed:
                 self._save_current_state(current_state)

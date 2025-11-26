@@ -1,4 +1,3 @@
-# components/callbacks/callback_handlers.py
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, CallbackQueryHandler
 
@@ -8,12 +7,14 @@ from components.keyboards.subscribe_keyboards import (
     groups_keyboard,
     professors_keyboard
 )
+from patterns.observer.concrete_observers import StudentObserver, TeacherObserver
 
 
-async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE, observe_lessons, observe_exams, send_message):
     query = update.callback_query
     await query.answer()
     data = query.data
+    chat_id = update.effective_chat.id
 
     if data == "role_student":
         await query.edit_message_text(
@@ -28,7 +29,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif data in ["cycle_bachelor_fulltime", "cycle_bachelor_lowfreq", "cycle_master"]:
-        context.user_data["cycle"] = data  # salvăm pentru pașii următori
+        context.user_data["cycle"] = data
         await query.edit_message_text(
             "Alege anul de studiu:",
             reply_markup=select_year_keyboard(data)
@@ -52,6 +53,9 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data.startswith("group_"):
         group = data.replace("group_", "")
+        student_observer = StudentObserver(chat_id=chat_id, group_name=group, send_message=send_message)
+        observe_lessons.attach(student_observer)
+        observe_exams.attach(student_observer)
         context.user_data["group"] = group
         cycle_map = {
             "cycle_bachelor_fulltime": "Licență - învățământ cu frecvență",
@@ -72,6 +76,9 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data.startswith("teacher_"):
         prof = data.replace("teacher_", "")
+        teacher_observer = TeacherObserver(chat_id=chat_id, teacher_name=prof, send_message=send_message)
+        observe_lessons.attach(teacher_observer)
+        observe_exams.attach(teacher_observer)
         await query.edit_message_text(
             f"Ai ales profesorul: {prof}\n"
             "Orarul va fi trimis în curând.",

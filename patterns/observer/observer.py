@@ -1,6 +1,5 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-import json
 
 # ---------------- Observer Pattern ----------------
 class Subject(ABC):
@@ -13,10 +12,10 @@ class Subject(ABC):
         pass
 
     @abstractmethod
-    def notify(self) -> None:
+    def notify(self, message: str) -> None:
         pass
 
 class Observer(ABC):
     @abstractmethod
-    async def update(self, subject: Subject) -> None:
+    async def update(self, subject: Subject, message: str) -> None:
         pass
