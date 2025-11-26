@@ -12,7 +12,8 @@ from telegram.ext import ContextTypes, CommandHandler, CallbackQueryHandler
 from components.handlers.callback_handlers import handle_callback
 from patterns.adapter.adapters import LessonJSONAdapter, ExamJSONAdapter
 from patterns.command.concrete_commands import SubscribeCommand, UnsubscribeCommand, StartCommand, MenuCommand, \
-    ShowLessonsScheduleCommand, ShowExamsScheduleCommand
+    ShowLessonsScheduleCommand, ShowExamsScheduleCommand, GetScheduleForTodayCommand, GetScheduleForTodayCommand, \
+    GetScheduleForTomorrowCommand, ScheduleService, GetScheduleForThisWeekCommand, GetScheduleForNextWeekCommand
 from patterns.command.invoker import CommandInvoker
 from patterns.observer.concrete_subjects import LessonsSchedule, ExamsSchedule
 from patterns.template.concrete_downloaders import LessonScheduleDownloader, ExamScheduleDownloader
@@ -63,12 +64,18 @@ class TelegramSubsystem:
         await self.invoker.handle(update, context)
 
     def init_bot(self):
+        schedule_service = ScheduleService()
         self.invoker.register("start", StartCommand())
         self.invoker.register("subscribe", SubscribeCommand())
         self.invoker.register("unsubscribe", UnsubscribeCommand())
         self.invoker.register("menu", MenuCommand())
         self.invoker.register("orar_lectii", ShowLessonsScheduleCommand())
         self.invoker.register("orar_examene", ShowExamsScheduleCommand())
+        self.invoker.register("azi", GetScheduleForTodayCommand(schedule_service))
+        self.invoker.register("maine", GetScheduleForTomorrowCommand(schedule_service))
+        self.invoker.register("saptamana_curenta", GetScheduleForThisWeekCommand(schedule_service))
+        self.invoker.register("saptamana_viitoare", GetScheduleForNextWeekCommand(schedule_service))
+
         print("TelegramSubsystem: Initializing Telegram bot...")
 
     async def send_message(self, chat_id: int, text: str):
@@ -80,7 +87,18 @@ class TelegramSubsystem:
     async def start_bot(self):
         print("TelegramSubsystem: Starting Telegram bot...")
 
-        self.app.add_handler(CommandHandler(["start", "subscribe", "unsubscribe", "menu", "orar_lectii", "orar_examene"], self.generic_handler))
+        self.app.add_handler(CommandHandler([
+            "start",
+            "subscribe",
+            "unsubscribe",
+            "menu",
+            "orar_lectii",
+            "orar_examene",
+            "azi",
+            "maine",
+            "saptamana_curenta",
+            "saptamana_viitoare"
+        ], self.generic_handler))
         callback_handler_func = partial(
             handle_callback,
             observe_lessons=self.observe_lessons,
