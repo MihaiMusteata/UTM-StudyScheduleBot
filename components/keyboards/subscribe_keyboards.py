@@ -43,7 +43,7 @@ def select_year_keyboard(cycle_type: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(keyboard)
 
 
-def groups_keyboard(category: str):
+def groups_keyboard():
     groups = []
     with open(absolute_path + "/patterns/adapter/groups.json", "r", encoding="utf-8") as f:
         groups = json.load(f)

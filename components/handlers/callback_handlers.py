@@ -11,6 +11,8 @@ from patterns.observer.concrete_observers import StudentObserver, TeacherObserve
 
 
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE, observe_lessons, observe_exams, send_message):
+    context.user_data["observe_lessons"] = observe_lessons
+    context.user_data["observe_exams"] = observe_exams
     query = update.callback_query
     await query.answer()
     data = query.data
@@ -48,7 +50,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE, ob
         await query.edit_message_text(
             f"Ai ales: Anul {year_number}\n"
             "Acum alege grupa:",
-            reply_markup=groups_keyboard("toate")
+            reply_markup=groups_keyboard()
         )
 
     elif data.startswith("group_"):
@@ -56,7 +58,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE, ob
         student_observer = StudentObserver(chat_id=chat_id, group_name=group, send_message=send_message)
         observe_lessons.attach(student_observer)
         observe_exams.attach(student_observer)
-        context.user_data["group"] = group
+        context.user_data["observer"] = student_observer
         cycle_map = {
             "cycle_bachelor_fulltime": "Licență - învățământ cu frecvență",
             "cycle_bachelor_lowfreq" : "Licență - învățământ cu frecvență redusă",
@@ -79,6 +81,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE, ob
         teacher_observer = TeacherObserver(chat_id=chat_id, teacher_name=prof, send_message=send_message)
         observe_lessons.attach(teacher_observer)
         observe_exams.attach(teacher_observer)
+        context.user_data["observer"] = teacher_observer
         await query.edit_message_text(
             f"Ai ales profesorul: {prof}\n"
             "Orarul va fi trimis în curând.",

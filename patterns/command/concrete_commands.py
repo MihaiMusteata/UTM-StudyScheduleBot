@@ -22,8 +22,13 @@ class SubscribeCommand(Command):
 
 class UnsubscribeCommand(Command):
     async def execute(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        user = update.effective_user.username or update.effective_user.first_name
-        await update.message.reply_text(f"{user} unsubscribed from notifications!")
+        observe_lessons = context.user_data["observe_lessons"]
+        observe_exams = context.user_data["observe_exams"]
+        observer = context.user_data["observer"]
+        observe_lessons.deattach(observer)
+        observe_exams.deattach(observer)
+
+        await update.message.reply_text("Te-ai dezabonat cu succes de la notificări!")
 
 class NotifyCommand(Command):
     async def execute(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
