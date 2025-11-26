@@ -1,5 +1,3 @@
-from asyncio import sleep
-
 from patterns.observer.observer import Observer, Subject
 
 class StudentObserver(Observer):

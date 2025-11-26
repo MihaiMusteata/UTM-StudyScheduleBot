@@ -34,3 +34,6 @@ class NotificationBuilder(ABC):
     def set_room(self, value: str) -> None:
         pass
 
+    @abstractmethod
+    def set_target_label(self, value: str) -> None:
+        pass

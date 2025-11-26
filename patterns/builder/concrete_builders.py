@@ -16,7 +16,7 @@ class LessonNotificationBuilder(NotificationBuilder):
         return product
 
     def set_type(self, value: str) -> None:
-        self._product.add("type", f"Lecție - {value}")
+        self._product.add("type", value)
 
     def set_target(self, value: str) -> None:
         self._product.add("target", value)
@@ -32,6 +32,9 @@ class LessonNotificationBuilder(NotificationBuilder):
 
     def set_room(self, value: str) -> None:
         self._product.add("room", value)
+
+    def set_target_label(self, value: str) -> None:
+        self._product.add("target_label", value)
 
 
 class ExamNotificationBuilder(NotificationBuilder):
@@ -48,7 +51,7 @@ class ExamNotificationBuilder(NotificationBuilder):
         return product
 
     def set_type(self, value: str) -> None:
-        self._product.add("type", f"Examen - {value}")
+        self._product.add("type", value)
 
     def set_target(self, value: str) -> None:
         self._product.add("target", value)
@@ -64,3 +67,6 @@ class ExamNotificationBuilder(NotificationBuilder):
 
     def set_room(self, value: str) -> None:
         self._product.add("room", value)
+
+    def set_target_label(self, value: str) -> None:
+        self._product.add("target_label", value)
