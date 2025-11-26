@@ -11,7 +11,7 @@ from telegram.ext import ContextTypes, CommandHandler, CallbackQueryHandler
 
 from components.handlers.callback_handlers import handle_callback
 from patterns.adapter.adapters import LessonJSONAdapter, ExamJSONAdapter
-from patterns.command.concrete_commands import HelloCommand, SubscribeCommand, UnsubscribeCommand, NotifyCommand
+from patterns.command.concrete_commands import SubscribeCommand, UnsubscribeCommand, StartCommand, MenuCommand
 from patterns.command.invoker import CommandInvoker
 from patterns.observer.concrete_subjects import LessonsSchedule, ExamsSchedule
 from patterns.template.concrete_downloaders import LessonScheduleDownloader, ExamScheduleDownloader
@@ -62,10 +62,10 @@ class TelegramSubsystem:
         await self.invoker.handle(update, context)
 
     def init_bot(self):
-        self.invoker.register("hello", HelloCommand())
+        self.invoker.register("start", StartCommand())
         self.invoker.register("subscribe", SubscribeCommand())
         self.invoker.register("unsubscribe", UnsubscribeCommand())
-        self.invoker.register("notify", NotifyCommand())
+        self.invoker.register("menu", MenuCommand())
         print("TelegramSubsystem: Initializing Telegram bot...")
 
     async def send_message(self, chat_id: int, text: str):
@@ -73,10 +73,11 @@ class TelegramSubsystem:
             raise Exception("Telegram bot is not running. Call operation_z first.")
         await self.app.bot.send_message(chat_id=chat_id, text=text)
 
+
     async def start_bot(self):
         print("TelegramSubsystem: Starting Telegram bot...")
 
-        self.app.add_handler(CommandHandler(["hello", "subscribe", "unsubscribe", "notify"], self.generic_handler))
+        self.app.add_handler(CommandHandler(["start", "subscribe", "unsubscribe", "menu"], self.generic_handler))
         callback_handler_func = partial(
             handle_callback,
             observe_lessons=self.observe_lessons,
