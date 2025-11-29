@@ -1,7 +1,7 @@
 import asyncio
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import partial
 
 import requests
@@ -10,6 +10,7 @@ from telegram import Update
 from telegram.ext import ContextTypes, CommandHandler, CallbackQueryHandler
 
 from components.handlers.callback_handlers import handle_callback
+from global_config import absolute_path
 from patterns.adapter.adapters import LessonJSONAdapter, ExamJSONAdapter
 from patterns.command.concrete_commands import SubscribeCommand, UnsubscribeCommand, StartCommand, MenuCommand, \
     ShowLessonsScheduleCommand, ShowExamsScheduleCommand, GetScheduleForTodayCommand, GetScheduleForTodayCommand, \
@@ -128,10 +129,16 @@ class BackgroundServiceSubsystem:
     def __init__(self, observe_lessons: LessonsSchedule, observe_exams: ExamsSchedule):
         self.URL = "https://fcim.utm.md/procesul-de-studii/orar/#toggle-id-3"
         self.STATE_FILE = "schedule_monitor_state.json"
+        self.REMINDER_STATE_FILE = "reminders_state.json"
+
         self.running = False
         self.monitor_task = None
+        self.reminder_task = None
+
         self.observe_lessons = observe_lessons
         self.observe_exams = observe_exams
+        self.lessons_path = f"{absolute_path}/patterns/adapter/lessons-schedule.json"
+        self.exams_path = f"{absolute_path}/patterns/adapter/exams-schedule.json"
 
     async def _check_for_changes(self):
         print(f"[{datetime.now().strftime('%H:%M:%S')}] [Monitor] Performing scheduled check...")
@@ -171,7 +178,7 @@ class BackgroundServiceSubsystem:
         if not tbody:
             raise ValueError("Could not find schedule table on the page.")
 
-        rows = tbody.find_all("tr")[1:]  # Skip header row (Calendarul universitar)
+        rows = tbody.find_all("tr")[1:]
 
         lessons = {"year1": None, "year2": None}
         exams = {"year1": None, "year2": None}
@@ -207,6 +214,85 @@ class BackgroundServiceSubsystem:
         with open(self.STATE_FILE, "w", encoding="utf-8") as f:
             json.dump(state, f, ensure_ascii=False, indent=2)
 
+    def _load_lessons(self):
+        with open(self.lessons_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    def _load_exams(self):
+        with open(self.exams_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    def _parse_lesson_start_time(self, lesson):
+        first_range = lesson["time"].split()[0]
+        start_time = first_range.split("-")[0]
+        return datetime.strptime(start_time, "%H:%M").time()
+
+    def _parse_exam_start_time(self, exam):
+        return datetime.strptime(exam["time"], "%H:%M").time()
+
+    def _is_lesson_today(self, lesson):
+        period, weekday_part = lesson["date"].split(" (")
+        weekday = weekday_part.replace(")", "")
+        start_str, end_str = period.split("-")
+        start = datetime.strptime(start_str, "%d.%m.%Y").date()
+        end = datetime.strptime(end_str, "%d.%m.%Y").date()
+
+        today = datetime.now().date()
+        today_name = datetime.now().strftime("%A")
+
+        days_map = {
+            "Monday": "Luni", "Tuesday": "Marți", "Wednesday": "Miercuri",
+            "Thursday": "Joi", "Friday": "Vineri",
+            "Saturday": "Sâmbătă", "Sunday": "Duminică"
+        }
+
+        return start <= today <= end and days_map[today_name] == weekday
+
+    def _is_exam_today(self, exam):
+        exam_date = datetime.strptime(exam["date"], "%d/%m/%y").date()
+        return exam_date == datetime.now().date()
+
+    async def _check_upcoming_events(self):
+        print("[Reminder] Checking for upcoming events...")
+        now = datetime.now()
+        now_plus_15 = now + timedelta(minutes=15)
+
+        lessons = self._load_lessons()
+        exams = self._load_exams()
+
+        for lesson in lessons:
+            if not self._is_lesson_today(lesson):
+                continue
+
+            start_time = self._parse_lesson_start_time(lesson)
+            lesson_dt = datetime.combine(now.date(), start_time)
+
+            if now <= lesson_dt <= now_plus_15:
+                msg = f"⏰ Lecție la {lesson['subject']} începe în 15 minute!\nSala: {lesson['room']}"
+                self.observe_lessons.update_schedule(msg)
+
+        for exam in exams:
+            if not self._is_exam_today(exam):
+                continue
+
+            start_time = self._parse_exam_start_time(exam)
+            exam_dt = datetime.combine(now.date(), start_time)
+
+            if now <= exam_dt <= now_plus_15:
+                msg = (f"📝 Examen la {exam['subject']} începe în 15 minute!\n"
+                       f"Profesor: {exam['professor']} • Sala: {exam['room']}")
+                self.observe_exams.update_schedule(msg)
+
+
+    async def start_reminder_service(self):
+        print("[Reminder] Reminder service started (checks every 60 sec)")
+        while self.running:
+            try:
+                await self._check_upcoming_events()
+            except Exception as e:
+                print("[Reminder] Error:", e)
+
+            await asyncio.sleep(10)
 
     async def start_monitoring(self):
         if self.running:
@@ -214,7 +300,7 @@ class BackgroundServiceSubsystem:
             return
 
         self.running = True
-        print("BackgroundServiceSubsystem: Schedule monitoring started (checks every hour)")
+        print("BackgroundServiceSubsystem: Schedule monitoring started")
 
         await self._check_for_changes()
 
@@ -229,4 +315,5 @@ class BackgroundServiceSubsystem:
     def create_background_task(self, loop=None):
         loop = loop or asyncio.get_event_loop()
         self.monitor_task = loop.create_task(self.start_monitoring())
-        return self.monitor_task
+        self.reminder_task = loop.create_task(self.start_reminder_service())
+        return self.monitor_task, self.reminder_task
